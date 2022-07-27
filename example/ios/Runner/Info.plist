@@ -28,6 +28,12 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>NSCameraUsageDescription</key>
+  <string>需要访问您的相机，以便您正常使用拍照上传图片等服务</string>
+  <key>NSPhotoLibraryAddUsageDescription</key>
+  <string>需要访问您的相册，以便您正常使用拍照上传图片等服务</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>需要访问您的相册，以便您正常使用拍照上传图片等服务</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

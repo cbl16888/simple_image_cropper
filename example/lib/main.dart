@@ -1,62 +1,157 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 import 'dart:async';
-
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:simple_image_cropper/simple_image_cropper.dart';
 
+enum _sheetType { gallery, camera }
+
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
-
+class MyApp extends StatelessWidget {
   @override
-  State<MyApp> createState() => _MyAppState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      initialRoute: "/",
+      routes: {
+        "crop_page": (context) => SimpleCropRoute(),
+        "/": (context) => MyHomeRoute()
+      },
+    );
+  }
 }
 
-class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
-
+class MyHomeRoute extends StatefulWidget {
   @override
-  void initState() {
-    super.initState();
-    initPlatformState();
+  _MyHomeRouteState createState() => new _MyHomeRouteState();
+}
+
+class _MyHomeRouteState extends State<MyHomeRoute> {
+  final cropKey = GlobalKey<ImgCropState>();
+
+  Future getImage(type) async {
+    var image = await ImagePicker().pickImage(
+        source: type == _sheetType.gallery
+            ? ImageSource.gallery
+            : ImageSource.camera);
+    if (image == null) return;
+    Navigator.of(context).pop();
+    Navigator.of(context).pushNamed('crop_page', arguments: {'image': File(image.path)});
   }
 
-  // Platform messages are asynchronous, so we initialize in an async method.
-  Future<void> initPlatformState() async {
-    String platformVersion;
-    // Platform messages may fail, so we use a try/catch PlatformException.
-    // We also handle the message potentially returning null.
-    try {
-      platformVersion =
-          await SimpleImageCropper.platformVersion ?? 'Unknown platform version';
-    } on PlatformException {
-      platformVersion = 'Failed to get platform version.';
-    }
-
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _platformVersion = platformVersion;
-    });
+  void _showActionSheet() {
+    showModalBottomSheet(
+        context: context,
+        builder: (BuildContext context) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // 设置最小的弹出
+              children: <Widget>[
+                new ListTile(
+                  leading: new Icon(Icons.photo_camera),
+                  title: new Text("相机拍照"),
+                  onTap: () async {
+                    getImage(_sheetType.camera);
+                  },
+                ),
+                new ListTile(
+                  leading: new Icon(Icons.photo_library),
+                  title: new Text("相册选择"),
+                  onTap: () async {
+                    getImage(_sheetType.gallery);
+                  },
+                ),
+              ],
+            ),
+          );
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Center(
-          child: Text('Running on: $_platformVersion\n'),
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('select image'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showActionSheet,
+        tooltip: 'Increment',
+        child: Icon(Icons.add),
       ),
     );
+  }
+}
+
+class SimpleCropRoute extends StatefulWidget {
+  @override
+  _SimpleCropRouteState createState() => _SimpleCropRouteState();
+}
+
+class _SimpleCropRouteState extends State<SimpleCropRoute> {
+  final cropKey = GlobalKey<ImgCropState>();
+
+  Future<Null> showImage(BuildContext context, File file) async {
+    new FileImage(file)
+        .resolve(new ImageConfiguration())
+        .addListener(ImageStreamListener((ImageInfo info, bool _) {
+      print('-------------------------------------------$info');
+    }));
+    return showDialog<Null>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+              title: Text(
+                'Current screenshot：',
+                style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontWeight: FontWeight.w300,
+                    color: Theme.of(context).primaryColor,
+                    letterSpacing: 1.1),
+              ),
+              content: Image.file(file));
+        });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Map? args = ModalRoute.of(context)?.settings.arguments as Map?;
+    return Scaffold(
+        appBar: AppBar(
+          elevation: 0,
+          title: Text(
+            'Zoom and Crop',
+            style: TextStyle(color: Colors.black),
+          ),
+          backgroundColor: Colors.white,
+          leading: new IconButton(
+            icon:
+            new Icon(Icons.navigate_before, color: Colors.black, size: 40),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: Center(
+          child: ImgCrop(
+            key: cropKey,
+            chipRadius: 100,
+            chipShape: ChipShape.rect,
+            chipRatio: 2 / 1,
+            maximumScale: 3,
+            image: FileImage(args!['image']),
+            // handleSize: 0.0,
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final crop = cropKey.currentState!;
+            final croppedFile =
+            await crop.cropCompleted(args['image'], preferredSize: 1000);
+            showImage(context, croppedFile);
+          },
+          tooltip: 'Increment',
+          child: Text('Crop'),
+        ));
   }
 }
