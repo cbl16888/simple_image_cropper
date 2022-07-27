@@ -28,7 +28,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.zhonglingyi.simple_image_cropper
+        package: com.zly.simple_image_cropper
         pluginClass: SimpleImageCropperPlugin
       ios:
         pluginClass: SimpleImageCropperPlugin
